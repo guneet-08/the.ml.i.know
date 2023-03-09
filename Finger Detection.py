@@ -5,30 +5,44 @@ Created on Sat Nov  7 19:54:55 2020
 @author: Guneet
 """
 
+"""
+OVERVIEW : This is an Open CV based project which is the first step towards
+AR Notes: A fully Augumented Environment wherein you can learn and save data in the real world.
 
+This is the Finger Detection part. Wherein, a user can write in air using his/her finger. The 
+program detects the palm followed by the finger-tip and finally continousy tracks it and 
+retraces the path, which immitates INK on paper.
+"""
+
+
+#importing the necessary libraries
 import cv2
 import numpy as np
 
+#defining the varibales
 hand_hist = None
 traverse_point = []
-total_rectangle = 9
+total_rectangle = 9   #using a 3 x 3 matrix to detect hand colour and perform background seperation 
 hand_rect_one_x = None
 hand_rect_one_y = None
 
 hand_rect_two_x = None
 hand_rect_two_y = None
 
+# declaring the frame size 
 def rescale_frame(frame, wpercent=130, hpercent=130):
     width = int(frame.shape[1] * wpercent / 100)
     height = int(frame.shape[0] * hpercent / 100)
     return cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
 
+# getting the countours from the camera input based on color variation (hand-bg seperation)
 def contours(hist_mask_image):
     gray_hist_mask_image = cv2.cvtColor(hist_mask_image, cv2.COLOR_BGR2GRAY)
     ret, thresh = cv2.threshold(gray_hist_mask_image, 0, 255, 0)
     _, cont, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     return cont
 
+# creating the rectangular frame that will initially capture the skin tone using the hues within those rectangles 
 def draw_rect(frame):
     rows, cols, _ = frame.shape
     global total_rectangle, hand_rect_one_x, hand_rect_one_y, hand_rect_two_x, hand_rect_two_y
@@ -51,6 +65,7 @@ def draw_rect(frame):
 
     return frame
 
+#getting the color data as histogram from the captured colours of the hand
 def hand_histogram(frame):
     global hand_rect_one_x, hand_rect_one_y
 
@@ -64,6 +79,7 @@ def hand_histogram(frame):
     hand_hist = cv2.calcHist([roi], [0, 1], None, [180, 256], [0, 180, 0, 256])
     return cv2.normalize(hand_hist, hand_hist, 0, 255, cv2.NORM_MINMAX)
 
+#masking the histogram with the default threshold
 def hist_masking(frame, hist):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -80,6 +96,7 @@ def hist_masking(frame, hist):
 
     return cv2.bitwise_and(frame, thresh)
 
+#to find the centroid of passed in contours
 def centroid(max_contour):
     moment = cv2.moments(max_contour)
     if moment['m00'] != 0:
@@ -88,7 +105,8 @@ def centroid(max_contour):
         return cx, cy
     else:
         return None
-    
+
+#to get the finget-tip (farthest point from the center of hand)
 def farthest_point(defects, contour, centroid):
     if defects is not None and centroid is not None:
         s = defects[:, 0][:, 0]
@@ -110,12 +128,14 @@ def farthest_point(defects, contour, centroid):
         else:
             return None    
 
+# to trace the finger path updates using circles and display them
 def draw_circles(frame, traverse_point):
     if traverse_point is not None:
         for i in range(len(traverse_point)):
             cv2.circle(frame, traverse_point[i], int(5 - (5 * i * 3) / 100), [0, 255, 255], -1)
 
 
+#  handling the operations of the generated image (from palm detection to hue saving and tracing finger based on that hue and its centroid) 
 def manage_image_opr(frame, hand_hist):
     hist_mask_image = hist_masking(frame, hand_hist)
 
@@ -142,21 +162,22 @@ def manage_image_opr(frame, hand_hist):
 
         draw_circles(frame, traverse_point)
 
+#fabricating the main function now
 def main():
     global hand_hist
     is_hand_hist_created = False
-    capture = cv2.VideoCapture(0)
+    capture = cv2.VideoCapture(0)  #capturing frames via the builtin web-cam 0
 
     while capture.isOpened():
         pressed_key = cv2.waitKey(1)
         _, frame = capture.read()
         frame = cv2.flip(frame, 1)
 
-        if pressed_key & 0xFF == ord('z'):
+        if pressed_key & 0xFF == ord('z'):    #presssing z key to create histogram and follow
             is_hand_hist_created = True
             hand_hist = hand_histogram(frame)
 
-        if is_hand_hist_created:
+        if is_hand_hist_created:            #if histogram successfully created, then performing image processing operatins on the image.
             manage_image_opr(frame, hand_hist)
 
         else:
@@ -164,11 +185,12 @@ def main():
 
         cv2.imshow("Live Feed", rescale_frame(frame))
 
-        if pressed_key == 27:
+        if pressed_key == 27:   #press any key to exit the process
             break
 
-    cv2.destroyAllWindows()
-    capture.release()
+    cv2.destroyAllWindows()  #destroy the existing windows
+    capture.release()  #swith off the feed from camera 
 
+#execution
 if __name__ == "__main__":
     main()
