@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+
+# 
+
+
+# DATASET LINK : "https://www.kaggle.com/c/diabetic-retinopathy-detection/data?select=test.zip.001" 
+
 """
 Created on Mon Jun  6 00:22:39 2022
 
@@ -219,6 +225,7 @@ class TransferLearning:
         for k in range(1,folds + 1):
             model = keras.models.load_model(model_save_dest[k])
             pred = pred + model.predict(test_X)
+        
         pred = pred/(1.0*folds) 
         pred_class = np.argmax(pred,axis=1) 
         act_class = np.argmax(test_y,axis=1)
